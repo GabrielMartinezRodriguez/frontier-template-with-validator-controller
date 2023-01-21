@@ -142,3 +142,7 @@ pallet-evm-test-vector-support = { version = "1.0.0-dev", path = "frame/evm/test
 pallet-hotfix-sufficients = { version = "1.0.0", path = "frame/hotfix-sufficients", default-features = false }
 # Frontier Template
 frontier-template-runtime = { path = "template/runtime", default-features = false }
+
+# Custom
+pallet-session = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate", branch = "master", default-features = false }
+pallet-validator-controller = { version = "1.0.0", path = "frame/validator-controller", default-features = false }

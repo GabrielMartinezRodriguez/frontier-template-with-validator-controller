@@ -10,7 +10,7 @@ use sp_runtime::traits::{IdentifyAccount, Verify};
 use sp_state_machine::BasicExternalities;
 // Frontier
 use frontier_template_runtime::{
-	AccountId, EnableManualSeal, GenesisConfig, Signature, WASM_BINARY,
+	opaque::SessionKeys, AccountId, EnableManualSeal, GenesisConfig, Signature, WASM_BINARY,
 };
 
 // The URL for the telemetry server.
@@ -49,6 +49,10 @@ pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Pu
 		.public()
 }
 
+pub fn session_keys(aura: AuraId, grandpa: GrandpaId) -> SessionKeys {
+	SessionKeys { aura, grandpa }
+}
+
 type AccountPublic = <Signature as Verify>::Signer;
 
 /// Generate an account ID from seed.
@@ -60,8 +64,12 @@ where
 }
 
 /// Generate an Aura authority key.
-pub fn authority_keys_from_seed(s: &str) -> (AuraId, GrandpaId) {
-	(get_from_seed::<AuraId>(s), get_from_seed::<GrandpaId>(s))
+pub fn authority_keys_from_seed(s: &str) -> (AccountId, AuraId, GrandpaId) {
+	(
+		get_account_id_from_seed::<sr25519::Public>(s),
+		get_from_seed::<AuraId>(s),
+		get_from_seed::<GrandpaId>(s),
+	)
 }
 
 pub fn development_config(enable_manual_seal: Option<bool>) -> DevChainSpec {
@@ -163,12 +171,12 @@ fn testnet_genesis(
 	wasm_binary: &[u8],
 	sudo_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
-	initial_authorities: Vec<(AuraId, GrandpaId)>,
+	initial_authorities: Vec<(AccountId, AuraId, GrandpaId)>,
 	chain_id: u64,
 ) -> GenesisConfig {
 	use frontier_template_runtime::{
-		AuraConfig, BalancesConfig, EVMChainIdConfig, EVMConfig, GrandpaConfig, SudoConfig,
-		SystemConfig,
+		AuraConfig, BalancesConfig, EVMChainIdConfig, EVMConfig, GrandpaConfig, SessionConfig,
+		SudoConfig, SystemConfig, ValidatorControllerConfig,
 	};
 
 	GenesisConfig {
@@ -195,13 +203,26 @@ fn testnet_genesis(
 
 		// Consensus
 		aura: AuraConfig {
-			authorities: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
+			authorities: vec![],
 		},
 		grandpa: GrandpaConfig {
-			authorities: initial_authorities
+			authorities: vec![],
+		},
+
+		session: SessionConfig {
+			keys: initial_authorities
 				.iter()
-				.map(|x| (x.1.clone(), 1))
-				.collect(),
+				.map(|x| {
+					(
+						x.0.clone(),
+						x.0.clone(),
+						session_keys(x.1.clone(), x.2.clone()),
+					)
+				})
+				.collect::<Vec<_>>(),
+		},
+		validator_controller: ValidatorControllerConfig {
+			initial_validators: initial_authorities.iter().map(|x| x.0.clone()).collect(),
 		},
 
 		// EVM compatibility
